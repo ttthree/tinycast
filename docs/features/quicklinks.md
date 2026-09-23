@@ -116,6 +116,12 @@ replaces it. So it is never owed: `QuicklinkCoordinator.requiresValue` keeps it 
 incomplete field, and ↵ opens a selected-text link at once instead of focusing the empty chip first. That is the one behavioural difference from the two-screen form it replaced, and it is
 what lets the strip be drawn without capturing anything.
 
+**A lone free-text argument rides the root search field.** When a quicklink declares exactly one
+`{argument}` with no `options=` and no selection field, root search draws no chip once the field holds
+something — ↵, a row click and the Actions **Open** row all hand the typed text to that argument whole.
+An empty field keeps the chip, so the argument still has somewhere to be typed, and a link with several
+fields, an `options=` choice or an asked-for `{selection}` keeps the chips at every length.
+
 `openQuicklink(id:forcingDefaultApp:values:)` is the single funnel, and it captures the expansion
 context on **every** call rather than holding one across a session, so `{clipboard}`, `{selection}` and
 `{date}` are read at the moment the link opens. Reached from a global shortcut with the palette closed

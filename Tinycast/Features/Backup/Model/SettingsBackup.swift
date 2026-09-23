@@ -10,6 +10,8 @@ struct SettingsBackup: Codable {
     var windowLayouts: [WindowLayout]?
     var customWindowSizes: [CustomWindowSize]?
     var favoriteApps: [String]?
+    /// The subset of `favoriteApps` that stays pinned past a typed query.
+    var alwaysOnTopFavorites: [String]?
     var hiddenLauncherItems: [String]?
     var hiddenLauncherKinds: [String]?
     var launcherAliases: [String: String]?
@@ -232,6 +234,8 @@ extension SettingsBackup {
         backup.windowLayouts = core.windowLayouts.layouts
         backup.customWindowSizes = core.customWindowSizes.sizes
         backup.favoriteApps = core.favorites.keys
+        backup.alwaysOnTopFavorites = core.favorites.keys.filter(
+            core.favorites.alwaysOnTopKeys.contains)
         backup.hiddenLauncherItems = Array(core.visibility.hiddenItemKeys)
         backup.hiddenLauncherKinds = Array(core.visibility.disabledKinds)
         backup.launcherAliases = core.aliases.aliases
@@ -261,7 +265,8 @@ extension SettingsBackup {
         }
         if let hotkeys { summary.hotkeys = applyHotkeys(hotkeys, to: core) }
         if let favoriteApps {
-            core.favorites.replace(keys: favoriteApps)
+            let alwaysOnTop = alwaysOnTopFavorites ?? []
+            core.favorites.replace(keys: favoriteApps, alwaysOnTop: alwaysOnTop)
             summary.favorites = favoriteApps.count
         }
         if hiddenLauncherItems != nil || hiddenLauncherKinds != nil {
