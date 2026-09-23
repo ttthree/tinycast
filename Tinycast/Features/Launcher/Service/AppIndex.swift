@@ -670,7 +670,15 @@ final class AppIndex {
         return resultsMemo.value(for: key) {
             // Filtering stays downstream of `matches` so that memo is never keyed on hidden state.
             let visible = matches(q).filter(visibility.isVisible)
-            guard q.isEmpty else { return Results(entries: visible) }
+            guard q.isEmpty else {
+                // A category listing is exactly that category, so no favorite may be spliced in.
+                guard AppEntry.Kind.named(by: q) == nil else { return Results(entries: visible) }
+                // An always-on-top favorite leads even when the query matched nothing else.
+                let leading = favorites.alwaysOnTop(in: apps.filter(visibility.isVisible))
+                let leadingKeys = Set(leading.map(\.preferenceKey))
+                let rest = visible.filter { !leadingKeys.contains($0.preferenceKey) }
+                return Results(entries: leading + rest)
+            }
             let split = favorites.ordered(visible)
             let suggested =
                 showsSuggestions ? suggestions(from: split.rest, usage: usage, hotKeys: hotKeys) : []

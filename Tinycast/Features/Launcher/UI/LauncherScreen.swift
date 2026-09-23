@@ -150,6 +150,8 @@ struct LauncherScreen: PaletteScreen {
         guard let entry = entry(at: selection) else { return nil }
         // A quicklink asks for its values in root search too, so the fallback never leaves it.
         if entry.kind == .quicklink {
+            // Its one free-text argument is the search field itself once something is typed.
+            if rootSearchArgument(for: entry) != nil { return nil }
             return QuicklinkArgumentsAccessory.make(
                 quicklink: quicklink(for: entry), core: core, vm: vm, focus: focus,
                 placement: .afterQuery, onOpenOptions: openArgumentOptions,
@@ -195,6 +197,16 @@ struct LauncherScreen: PaletteScreen {
         Quicklink.id(fromEntryID: entry.id).flatMap(core.quicklinks.quicklink)
     }
 
+    /// A quicklink whose lone free-text `{argument}` the root search field supplies whole, once the
+    /// field holds something. An empty field keeps the chip, so the argument still has a place.
+    private func rootSearchArgument(for entry: AppEntry) -> (id: UUID, name: String)? {
+        guard entry.kind == .quicklink, let link = quicklink(for: entry),
+            !vm.query.trimmingCharacters(in: .whitespaces).isEmpty,
+            let name = core.quicklinkCoordinator.singleQueryArgument(for: link)
+        else { return nil }
+        return (link.id, name)
+    }
+
     private func entry(at selection: Int) -> AppEntry? {
         guard case .entry(let app) = row(at: selection) else { return nil }
         return app
@@ -237,7 +249,8 @@ struct LauncherScreen: PaletteScreen {
                     // Reset can move the item; keep the highlight on the item whose action ran.
                     if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }
                 },
-                onHideFromSearch: { _ = hideFromSearch(at: selection) })
+                onHideFromSearch: { _ = hideFromSearch(at: selection) },
+                open: { activate(entry: app) })
         case .fallback(let fallback, let app):
             return FallbackActionsMenu.content(
                 fallback: fallback, entry: app, query: vm.query, core: core)
@@ -253,13 +266,21 @@ struct LauncherScreen: PaletteScreen {
         case .color(let color):
             core.clipboardCoordinator.copyColor(color, as: ColorFormat.primary(for: color))
         case .meeting(let meeting): core.calendarCoordinator.activateMeeting(id: meeting.id)
-        case .entry(let app):
-            core.launcherCoordinator.launch(
-                app, searchQuery: vm.query, arguments: argumentValues(for: app))
+        case .entry(let app): activate(entry: app)
         case .fallback(let fallback, _):
             core.fallbackCoordinator.run(fallback, query: vm.query)
         case nil: break
         }
+    }
+
+    /// Every launch goes through here, so a click and ↵ answer a single-argument quicklink alike.
+    private func activate(entry app: AppEntry) {
+        if let field = rootSearchArgument(for: app) {
+            core.quicklinkCoordinator.openQuicklink(id: field.id, values: [field.name: vm.query])
+            return
+        }
+        core.launcherCoordinator.launch(
+            app, searchQuery: vm.query, arguments: argumentValues(for: app))
     }
 
     /// ⌘↵ — only an entry backed by a file on disk has somewhere to be revealed.
@@ -313,6 +334,14 @@ struct LauncherScreen: PaletteScreen {
         return true
     }
 
+    /// Keeps the highlight on the row whose flag changed as the leading block grows or shrinks.
+    private func toggleAlwaysOnTop(at selection: Int) -> Bool {
+        guard let app = entry(at: selection), favorites.isFavorite(app) else { return false }
+        favorites.setAlwaysOnTop(!favorites.isAlwaysOnTop(app), for: app)
+        follow(app)
+        return true
+    }
+
     /// ⌘1–⌘9/⌘0 — launch a favorite by position, in either palette size.
     private func launchFavorite(at index: Int) -> Bool {
         guard let app = pinnedFavorites.dropFirst(index).first else { return false }
@@ -342,9 +371,11 @@ struct LauncherScreen: PaletteScreen {
         let index = favoriteIndex(of: app)
         return AppActionsMenu.FavoriteActions(
             isFavorite: favorites.isFavorite(app),
+            isAlwaysOnTop: favorites.isAlwaysOnTop(app),
             canMoveUp: index.map { $0 > 0 } ?? false,
             canMoveDown: index.map { $0 < favoriteCount - 1 } ?? false,
             toggle: { _ = toggleFavorite(at: selection) },
+            toggleAlwaysOnTop: { _ = toggleAlwaysOnTop(at: selection) },
             move: { _ = moveFavorite($0, at: selection) })
     }
 
@@ -423,10 +454,7 @@ struct LauncherScreen: PaletteScreen {
                 vm.selection = 0
                 openActions()
             },
-            onActivate: {
-                core.launcherCoordinator.launch(
-                    $0, searchQuery: vm.query, arguments: argumentValues(for: $0))
-            },
+            onActivate: { activate(entry: $0) },
             onActions: { app in
                 if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }
                 openActions()

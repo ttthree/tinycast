@@ -7,16 +7,18 @@ enum AppActionsMenu {
     @MainActor
     struct FavoriteActions {
         let isFavorite: Bool
+        let isAlwaysOnTop: Bool
         let canMoveUp: Bool
         let canMoveDown: Bool
         let toggle: () -> Void
+        let toggleAlwaysOnTop: () -> Void
         let move: (Int) -> Void
     }
 
     static func content(
         app: AppEntry, searchQuery: String, core: AppCore, running: Bool,
         favorites: FavoriteActions, onResetRanking: @escaping () -> Void,
-        onHideFromSearch: @escaping () -> Void
+        onHideFromSearch: @escaping () -> Void, open: (() -> Void)? = nil
     ) -> PopoverMenuContent {
         let primarySymbol =
             switch app.kind {
@@ -27,7 +29,10 @@ enum AppActionsMenu {
             PopoverMenuItem(
                 title: app.kind.descriptor.openVerb, systemImage: primarySymbol,
                 shortcut: "↵"
-            ) { core.launcherCoordinator.launch(app, searchQuery: searchQuery) }
+            ) {
+                // The screen's own activation, so an Open row and ↵ can't answer differently.
+                if let open { open() } else { core.launcherCoordinator.launch(app, searchQuery: searchQuery) }
+            }
         ]
         if app.canRevealInFinder {
             items.append(
@@ -43,6 +48,14 @@ enum AppActionsMenu {
                     title: favorites.isFavorite ? "Remove from Favorites" : "Add to Favorites",
                     systemImage: favorites.isFavorite ? "star.slash" : "star", startsSection: true,
                     shortcut: "⇧⌘F", action: favorites.toggle))
+        }
+        // Only a favorite can stay pinned past a typed query, so the flag follows the star.
+        if isPersistent, favorites.isFavorite {
+            items.append(
+                PopoverMenuItem(
+                    title: favorites.isAlwaysOnTop ? "Stop Always on Top" : "Always on Top",
+                    systemImage: favorites.isAlwaysOnTop ? "pin.slash" : "pin",
+                    action: favorites.toggleAlwaysOnTop))
         }
         if favorites.canMoveUp {
             items.append(

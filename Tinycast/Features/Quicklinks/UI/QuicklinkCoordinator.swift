@@ -128,6 +128,16 @@ final class QuicklinkCoordinator {
         argument.name != selectionArgument.name
     }
 
+    /// The one free-text `{argument}` a quicklink takes straight from the root search field, or nil
+    /// when it prompts for more — several fields, an `options=` choice, or a selection field.
+    func singleQueryArgument(for quicklink: Quicklink) -> String? {
+        let arguments = promptedArguments(for: quicklink)
+        guard arguments.count == 1, let argument = arguments.first,
+            argument.name != Self.selectionArgument.name, argument.options.isEmpty
+        else { return nil }
+        return argument.name
+    }
+
     /// The header fields a row shows: the link's own arguments, plus the one the setting asks for.
     func promptedArguments(for quicklink: Quicklink) -> [SnippetTemplateEngine.MissingArgument] {
         var arguments = SnippetTemplateEngine.declaredArguments(in: quicklink.link)

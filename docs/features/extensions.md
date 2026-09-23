@@ -821,7 +821,7 @@ never shares with an installed copy.
 | Menu-bar activation and snapshot | `extension-commands.json` | yes |
 | Icon override | `UserDefaults` → `extensionAppearances` | yes |
 | Command shortcuts | `UserDefaults` → `hotkey.extensionCommand.<entry id>` | yes |
-| Favorites, hidden items | `UserDefaults` → `favoriteApps`, `hiddenItemKeys` | yes |
+| Favorites, hidden items | `UserDefaults` → `favoriteApps`, `alwaysOnTopFavorites`, `hiddenItemKeys` | yes |
 | User alias | `UserDefaults` → `launcherAliases` | yes |
 | Launch ranking | `launcher-ranking.json` | yes |
 

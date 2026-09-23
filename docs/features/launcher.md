@@ -620,15 +620,23 @@ whose icon moved.
 
 ## Favorites
 
-`FavoritesStore.keys` is the order — the array *is* the ranking, and it only shows while the query is
+`FavoritesStore.keys` is the order — the array *is* the ranking — and it shows while the query is
 empty, where `AppIndex.orderedResults` pins it as a prefix of the results and counts it in
 `Results.favoriteCount`. `LauncherScreen` reads that count once in `init`, and the list, the reorder
 rows and the chord guards all read that one number, so the visible section and what a move acts on
 can't disagree.
 
-The ⌘K menu carries **Add / Remove from Favorites** (⇧⌘F) plus **Move Favorite Up / Down** (⌥⌘↑ /
-⌥⌘↓). A move row is only built in a direction that exists, so the first favorite has no Up row and
-the last has no Down.
+**A favorite can also be marked always on top.** `alwaysOnTopKeys` is a subset of `keys`, and once a
+query is typed `AppIndex.orderedResults` leads with every always-on-top favorite that is still visible
+— `FavoritesStore.alwaysOnTop(in:)` — even when the query matched nothing else. The rest of the
+matches follow, and the list draws the leading block under its own **Always on Top** header. A
+category listing is exactly its category, so nothing is spliced into one. The flag is cleared with
+the favorite: `toggle` and `remove` take the key out of both, and an entry that stopped matching the
+index simply drops out of the leading block without losing the flag.
+
+The ⌘K menu carries **Add / Remove from Favorites** (⇧⌘F), **Always on Top** for a favorite, plus
+**Move Favorite Up / Down** (⌥⌘↑ / ⌥⌘↓). A move row is only built in a direction that exists, so the
+first favorite has no Up row and the last has no Down.
 
 **Every one of those rows runs the same call its chord does** — the menu is handed an
 `AppActionsMenu.FavoriteActions` built by `LauncherScreen` and never touches `FavoritesStore` itself.

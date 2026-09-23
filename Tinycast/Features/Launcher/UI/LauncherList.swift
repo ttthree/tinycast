@@ -22,6 +22,7 @@ struct LauncherList: View {
     /// The `Use "…" with` section, always last; nil when nothing is typed.
     var fallbacks: FallbackSection?
     @Environment(RunningAppsMonitor.self) private var runningApps
+    @Environment(FavoritesStore.self) private var favorites
 
     /// What the fallback section draws and where its rows go, addressed by position.
     struct FallbackSection {
@@ -91,19 +92,29 @@ struct LauncherList: View {
         if let card { cardRows = [.header(card.sectionTitle), .card(card)] }
         guard showSections else {
             guard !results.isEmpty else { return cardRows + fallbackRows }
-            return cardRows + [.header("Results")] + results.map { .app($0, slot: nil) }
-                + fallbackRows
+            var rows = cardRows
+            let leading = results.prefix { favorites.isAlwaysOnTop($0) }
+            if !leading.isEmpty {
+                rows.append(.header("Always on Top"))
+                rows.append(contentsOf: leading.map { .app($0, slot: nil) })
+            }
+            let rest = results.dropFirst(leading.count)
+            if !rest.isEmpty {
+                rows.append(.header("Results"))
+                rows.append(contentsOf: rest.map { .app($0, slot: nil) })
+            }
+            return rows + fallbackRows
         }
         var rows: [Row] = cardRows
-        let favorites = results.prefix(favoriteCount)
+        let favoriteRows = results.prefix(favoriteCount)
         let suggestions = results.dropFirst(favoriteCount).prefix(suggestionCount)
         let rest = results.dropFirst(favoriteCount + suggestionCount)
         var grouped: [AppEntry.Kind: [AppEntry]] = [:]
         for app in rest { grouped[app.kind, default: []].append(app) }
-        if !favorites.isEmpty {
+        if !favoriteRows.isEmpty {
             rows.append(.header("Favorites"))
             rows.append(
-                contentsOf: favorites.enumerated().map {
+                contentsOf: favoriteRows.enumerated().map {
                     .app($1, slot: FavoriteSlots.digit(at: $0))
                 })
         }
@@ -232,6 +243,8 @@ private struct AppRow: View {
     @Environment(HotKeyManager.self) private var hotKeys
     /// Observed for the same reason: an alias edit re-renders the row's badge at once.
     @Environment(AliasStore.self) private var aliases
+    /// Observed so an Actions-menu toggle lights the row's pin at once.
+    @Environment(FavoritesStore.self) private var favorites
     /// Observed here rather than up in the list, so a ⌘ press re-renders rows and not the palette.
     @Environment(PaletteState.self) private var palette
     @State private var hovered = false
@@ -269,6 +282,12 @@ private struct AppRow: View {
             Text(app.name)
                 .font(metrics.typography.rowTitle)
                 .lineLimit(1)
+            if favorites.isAlwaysOnTop(app) {
+                Image(systemName: "pin.fill")
+                    .font(metrics.typography.rowTrailing)
+                    .foregroundStyle(.secondary)
+                    .help("Always on Top")
+            }
             if let subtitle = app.subtitle {
                 Text(subtitle)
                     .font(metrics.typography.rowTrailing)

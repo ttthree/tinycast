@@ -345,11 +345,15 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - ⌃N/⌃P move the highlight as ↓/↑ do; ⌃F/⌃B step the emoji grid's selection, and the caret elsewhere
 - The highlight always sits on the row the footer pill describes
 - With a calculation typed, the calculator card is first and is selected first
+- A single-argument quicklink shows no chip once root search holds text; ↵ opens it with that text
+  whole, while an empty field still shows the chip
 - With macOS set to a decimal-comma region (Italian), `2,3 + 1,5` answers `3,8`, `max(2,5; 3)`
   answers `3`, and ↵ pastes `3,8`; General ▸ Calculator ▸ Number format `English` restores `2.3 + 1.5`
   and re-renders past Calculator History in the chosen format
 - Section headers appear in order: Favorites, Applications, System Settings, Quicklinks, Snippets,
   System Actions, Window Management, Custom Commands, Commands
+- An always-on-top favorite leads a typed query under **Always on Top** even when the query matches
+  nothing else; removing the flag drops it out unless the query still matches it
 - With a non-ASCII input source active, ⌘K opens Actions; ↑/↓ move it, ↵ activates, Escape closes it
 - In either ⌘K Actions panel, typing filters immediately in the bottom search band without changing
   the palette query; sections survive filtering, **No Results** is centred, and no dissolve covers the
