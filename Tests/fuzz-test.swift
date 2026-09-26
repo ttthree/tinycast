@@ -20,12 +20,45 @@ struct FuzzTest {
         transliteration()
         naming()
         comparator()
+        substring()
         denseIndex()
         suggestions()
         sharedFold()
         properties()
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
+    }
+
+    // MARK: - Literal substring
+
+    /// The rule that lets a literal substring hit past an always-on-top pin.
+    static func substringHit(
+        _ query: String, name: String, alternates: [String] = [], alias: String? = nil
+    ) -> Bool {
+        var sources = EntryNaming.Sources(name: name)
+        sources.alternateTitles = alternates
+        return LauncherOrder.isSubstring(
+            profile: EntryNaming.profile(for: sources),
+            alias: alias.map { SearchText($0, transliterated: false) },
+            query: LauncherOrder.Query(query))
+    }
+
+    static func substring() {
+        print("# literal substring")
+        check("an equal name is a hit", substringHit("memoh", name: "Memoh"))
+        check("a name prefix counts", substringHit("mem", name: "Memoh"))
+        check("the fold is case-blind", substringHit("MEMOH", name: "Memoh"))
+        check("a middle run counts", substringHit("emo", name: "Memoh"))
+        check("a suffix counts", substringHit("moh", name: "Memoh"))
+        check("a later word counts", substringHit("eureka", name: "Ask Eureka"))
+        check("a word-start run counts", substringHit("sk e", name: "Ask Eureka"))
+        check("a letter inside a word counts", substringHit("e", name: "Ask Eureka"))
+        check("an alias run counts", substringHit("goo", name: "Search Google", alias: "goo"))
+        check(
+            "an alternate title run counts",
+            substringHit("tti", name: "System Settings", alternates: ["Settings"]))
+        check("a run that is not there does not", !substringHit("xyz", name: "Memoh"))
+        check("a query longer than the name does not", !substringHit("memohx", name: "Memoh"))
     }
 
     // MARK: - The scorer

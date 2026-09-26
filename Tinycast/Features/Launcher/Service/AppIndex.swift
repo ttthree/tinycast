@@ -673,11 +673,22 @@ final class AppIndex {
             guard q.isEmpty else {
                 // A category listing is exactly that category, so no favorite may be spliced in.
                 guard AppEntry.Kind.named(by: q) == nil else { return Results(entries: visible) }
-                // An always-on-top favorite leads even when the query matched nothing else.
+                let query = LauncherOrder.Query(q)
+                // A literal substring hit beats a pin, so the name the reader is typing wins the top.
+                let hits = visible.filter {
+                    LauncherOrder.isSubstring(
+                        profile: $0.search,
+                        alias: aliases.alias(for: $0.preferenceKey)
+                            .map { SearchText($0, transliterated: false) },
+                        query: query)
+                }
+                let hitKeys = Set(hits.map(\.preferenceKey))
+                // What is left of the pins follows, so one is never doubled under a literal hit.
                 let leading = favorites.alwaysOnTop(in: apps.filter(visibility.isVisible))
-                let leadingKeys = Set(leading.map(\.preferenceKey))
+                    .filter { !hitKeys.contains($0.preferenceKey) }
+                let leadingKeys = hitKeys.union(leading.map(\.preferenceKey))
                 let rest = visible.filter { !leadingKeys.contains($0.preferenceKey) }
-                return Results(entries: leading + rest)
+                return Results(entries: hits + leading + rest)
             }
             let split = favorites.ordered(visible)
             let suggested =

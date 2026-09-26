@@ -30,6 +30,26 @@ enum LauncherOrder {
         var boostedTerms: Set<String> = []
     }
 
+    /// Whether the query appears verbatim inside one of the entry's own names — the hit that lets a
+    /// typed query past an always-on-top favorite. A title reads through its Latin form; a renamed
+    /// or translated alternate title and a user alias compare as typed, exactly as `Facts` does.
+    static func isSubstring(profile: SearchProfile, alias: SearchText?, query: Query) -> Bool {
+        contains(profile.title.units, query.latin.units)
+            || profile.alternateTitles.contains { contains($0.units, query.typed.units) }
+            || alias.map { contains($0.units, query.typed.units) } == true
+    }
+
+    /// A contiguous run, which is what "substring" means here — not the fuzzy alignment.
+    private static func contains(_ target: [UInt16], _ query: [UInt16]) -> Bool {
+        guard !query.isEmpty, query.count <= target.count else { return false }
+        var start = 0
+        while start <= target.count - query.count {
+            if target[start..<start + query.count].elementsEqual(query) { return true }
+            start += 1
+        }
+        return false
+    }
+
     static func ranked<Item>(
         _ items: [Item], query: Query, sensitivity: SearchSensitivity, limit: Int,
         profile: (Item) -> SearchProfile, signals: (Item) -> Signals
