@@ -634,6 +634,13 @@ category listing is exactly its category, so nothing is spliced into one. The fl
 the favorite: `toggle` and `remove` take the key out of both, and an entry that stopped matching the
 index simply drops out of the leading block without losing the flag.
 
+**A literal substring hit outranks a pin.** `LauncherOrder.isSubstring` asks whether the query
+appears verbatim — a contiguous run, not the fuzzy alignment — inside the entry's own title, an
+alternate title or its user alias; title read into Latin, the other two as typed, exactly as the
+comparator's own field rules do. Every such hit leads the list in ranked order, and only what is left
+of the always-on-top block follows it, so typing `memoh` puts the `Memoh` app above a pinned
+quicklink while the pin still sits ahead of everything that matched less directly.
+
 The ⌘K menu carries **Add / Remove from Favorites** (⇧⌘F), **Always on Top** for a favorite, plus
 **Move Favorite Up / Down** (⌥⌘↑ / ⌥⌘↓). A move row is only built in a direction that exists, so the
 first favorite has no Up row and the last has no Down.

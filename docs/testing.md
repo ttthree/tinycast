@@ -354,6 +354,8 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
   System Actions, Window Management, Custom Commands, Commands
 - An always-on-top favorite leads a typed query under **Always on Top** even when the query matches
   nothing else; removing the flag drops it out unless the query still matches it
+- A literal substring hit beats the pin: typing `memoh` lists the `Memoh` app above an always-on-top
+  quicklink, which still sits above everything that matched only fuzzily
 - With a non-ASCII input source active, ⌘K opens Actions; ↑/↓ move it, ↵ activates, Escape closes it
 - In either ⌘K Actions panel, typing filters immediately in the bottom search band without changing
   the palette query; sections survive filtering, **No Results** is centred, and no dissolve covers the
