@@ -101,7 +101,17 @@ struct FuzzTest {
         check(
             "matched separators never push a row past the name",
             outcome("a--", "a---") == .scored(score: 8, skipped: 0))
-        check("camelCase is no word boundary in root search", score("p", "TablePlus") == 2)
+        check("a camelCase hump starts a word", score("p", "TablePlus") == 3)
+        check("…as does a letter after a digit", score("p", "1Password") == 3)
+        check("…and an acronym's last capital", score("e", "HTMLEditor") == 3)
+        check("…never the capital before it", score("l", "HTMLEditor") == 2)
+        check(
+            "…and survives a join",
+            SearchText("Search", transliterated: true).joined(
+                with: SearchText("OrbStack", transliterated: true)
+            )
+            .humps == [10])
+        check("…but not in a name the fold can shift", score("s", "CaféStack") == 2)
     }
 
     // MARK: - Sensitivity
@@ -117,8 +127,12 @@ struct FuzzTest {
         check("…which Medium lets through", passes("olu", "Set Volume", .medium))
         check("High turns away a mid-word hit", !passes("code", "Xcode", .high))
         check("…which Medium lets through", passes("code", "Xcode", .medium))
+        check("…and so does the default", passes("pec", "Accessibility Inspector", .default))
         check("High still finds initials", passes("vsc", "Visual Studio Code", .high))
         check("High still finds a later word", passes("chrome", "Google Chrome", .high))
+        check("…and a camelCase one", passes("stack", "OrbStack", .high))
+        check("…one after a digit", passes("password", "1Password", .high))
+        check("…and one after an acronym", passes("edit", "BBEdit", .high))
         check("one letter must start a word", !passes("s", "Clipboard History", .medium))
         check("…and does when it does", passes("s", "Clipboard History", .low))
         check("an exact hit passes every level", SearchSensitivity.high.accepts(.exact, queryLength: 99))
@@ -252,6 +266,16 @@ struct FuzzTest {
         check(
             "an alias prefix beats a stronger alignment",
             first("sp", [Item(name: "Spotify"), Item(name: "Arc", alias: "spaces")]) == "Arc")
+        let appearance = Item(name: "Toggle System Appearance", alias: "toggle light / dark")
+        check(
+            "a later word of an alias finds its entry",
+            rank("dark", [Item(name: "Safari"), appearance]) == ["Toggle System Appearance"])
+        check(
+            "…ranked by its score, so a title prefix still wins",
+            rank("dark", [appearance, Item(name: "Darkroom")]) == ["Darkroom", "Toggle System Appearance"])
+        check(
+            "a mid-word alias hit stays under the sensitivity",
+            rank("term", [Item(name: "Ghostty", alias: "myterm")]).isEmpty)
         check(
             "a term the query prefixes reaches back to shorter queries",
             first(
@@ -276,6 +300,17 @@ struct FuzzTest {
         check(
             "a title hit beats the same score on a subtitle",
             first("ma", [Item(name: "Search", subtitle: "Maps"), Item(name: "Maps")]) == "Maps")
+        check(
+            "a title the query starts beats the same score skipping to a later word",
+            first("ap", [Item(name: "AirPort Utility"), Item(name: "App Store")]) == "App Store")
+        check(
+            "…ahead of kind priority",
+            first("dev", [Item(name: "Desk View", priority: 4), Item(name: "Device Hub", priority: 1)])
+                == "Device Hub")
+        check(
+            "…but behind frecency",
+            first("ap", [Item(name: "App Store"), Item(name: "AirPort Utility", frecency: 200)])
+                == "AirPort Utility")
         check(
             "an app wins the tie a Tinycast command ties it on",
             first(
@@ -420,20 +455,20 @@ struct FuzzTest {
         }
 
         let commands = [
-            Candidate(name: "Clipboard History", priority: 80), Candidate(name: "AI Chat", priority: 90),
-            Candidate(name: "Search Files", priority: 70), Candidate(name: "My Schedule", priority: 60),
+            Candidate(name: "Search Files", priority: 70), Candidate(name: "Clipboard History", priority: 80),
+            Candidate(name: "My Schedule", priority: 60),
             Candidate(name: "Search Emoji & Symbols", priority: 50),
             Candidate(name: "Create Snippet", priority: 30)
         ]
         check(
             "a new user gets the built-ins, highest priority first",
             select(commands) == [
-                "AI Chat", "Clipboard History", "Search Files", "My Schedule", "Search Emoji & Symbols"
+                "Clipboard History", "Search Files", "My Schedule", "Search Emoji & Symbols", "Create Snippet"
             ])
         let used = [Candidate(name: "Safari", frecency: 40), Candidate(name: "Slack", frecency: 300)]
         check(
             "what the user opens comes first, most frecent first",
-            select(used + commands).prefix(3) == ["Slack", "Safari", "AI Chat"])
+            select(used + commands).prefix(3) == ["Slack", "Safari", "Clipboard History"])
         let many = (1...8).map { Candidate(name: "App \($0)", frecency: Double(100 + $0)) }
         check("never more than five", select(many + commands).count == LauncherSuggestions.limit)
         check(
@@ -441,7 +476,7 @@ struct FuzzTest {
             !select([Candidate(name: "Slack", frecency: 300, hotKey: true)] + commands).contains("Slack"))
         check(
             "the fill skips a built-in the user already aliased",
-            !select([Candidate(name: "AI Chat", alias: "ai", priority: 90)]).contains("AI Chat"))
+            select([Candidate(name: "Clipboard History", alias: "cb", priority: 80)]).isEmpty)
         let fresh = [
             Candidate(name: "New One", installedMinutesAgo: 1),
             Candidate(name: "New Two", installedMinutesAgo: 2),
